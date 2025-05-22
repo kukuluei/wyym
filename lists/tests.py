@@ -4,6 +4,8 @@ from lists.views import home_page
 from django.http import HttpRequest
 from django.template.loader import render_to_string
 from lists.models import Item, List
+from selenium.common.exceptions import WebDriverException
+
 
 
 class ListAndItemModelTest(TestCase):
@@ -51,13 +53,15 @@ class HomePageTest(TestCase):
     def test_redirects_after_POST(self):
         response = self.client.post('/lists/new', data={'item_text': 'A new list item'})
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response['location'], '/lists/the-new-page/')
+        new_list = List.objects.first()
+        self.assertRedirects(response, f'/lists/{new_list.id}/')
 
 
 class ListViewTest(TestCase):
 
     def test_uses_list_template(self):
-        response = self.client.get('/lists/the-new-page/')
+        list_user = List.objects.create()
+        response = self.client.get(f'/lists/{list_user.id}/')
         self.assertTemplateUsed(response, 'list.html')
 
     def test_displays_only_items_for_that_list(self):
@@ -75,6 +79,12 @@ class ListViewTest(TestCase):
         self.assertNotContains(response, 'other list item 1')
         self.assertNotContains(response, 'other list item 2')
 
+    def test_passes_correct_list_to_template(self):
+        other_list = List.objects.create()
+        corrtect_list = List.objects.create()
+        response = self.client.get(f'/lists/{corrtect_list.id}/')
+        self.assertEqual(response.context['list'], corrtect_list)
+
 class NewListTest(TestCase):
 
     def test_can_save_a_POST_request(self):
@@ -85,6 +95,7 @@ class NewListTest(TestCase):
 
     def test_redirects_after_POST(self):
         response = self.client.post('/lists/new', data={'item_text': 'A new list item'})  # (1)
-        self.assertRedirects(response, '/lists/the-new-page/')  # (2)
+        new_list = List.objects.first()
+        self.assertRedirects(response, f'/lists/{new_list.id}/')
 
 
